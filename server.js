@@ -48,7 +48,7 @@ async function buildDomains() {
     for (var i = 0; i < domains_list.length; i++) {
         var description = domains_list[i];
         var domain = description.replace(/\s/g, '-').replace(/,/g, '-').replace(/\./g, '').replace(/\'/g, '-').toLowerCase();
-        domain = domain.replace(/-/g, '-').replace(/__/g, '-');
+        domain = domain.replace(/-/g, '-').replace(/--/g, '-');
 
         const domainSize = utils.getDomainSize(domain);
 
