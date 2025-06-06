@@ -47,6 +47,9 @@ class MatrixMessenger:
         self.total_messages = int(os.getenv("MAX_MESSAGES", "300"))
         self.fake = Faker()
         self.use_threading = os.getenv("USE_THREADING", "false").lower() == "true"
+        self.thread_rooms_count = int(os.getenv("THREAD_ROOMS_COUNT", "1"))
+        self.threads_per_room = int(os.getenv("THREADS_PER_ROOM", "1"))
+        self.replies_per_thread = int(os.getenv("REPLIES_PER_THREAD", "5"))
 
     def generate_random_message(self):
         # Randomly choose number of sentences (1–5), each with variable length
@@ -100,6 +103,55 @@ class MatrixMessenger:
         logging.info(f"Group chat room created: {response.room_id}")
         return response.room_id
 
+    async def create_thread_room(self, creator: MatrixUser, invitees: list[str]):
+        """
+        Creates a thread room in channel.
+        """
+        name = self.generate_group_name()
+        response = await creator.client.room_create(
+            is_direct=False,
+            visibility=RoomVisibility.private,
+            name=name,
+            invite=invitees,
+            topic=f"Topic: {name}",
+            room_type="Channels",
+        )
+        if not isinstance(response, RoomCreateResponse):
+            raise Exception(f"Failed to create thread room: {response}")
+        
+        logging.info(f"Thread room created under channel {response.room_id}")
+        return response.room_id
+    
+    async def create_thread(self, client: MatrixUser, room_id: str):
+        msg = self.generate_random_message()
+        response = await client.client.room_send(
+            room_id,
+            message_type="m.room.message",
+            content={"msgtype": "m.text", "body": msg},
+        )
+        logging.info(f"[{client.full_user_id}] Started thread: {msg}")
+        return response.event_id  # parent event ID for the thread
+    
+    async def send_thread_replies(self, room_id: str, thread_root_id: str, users: list[MatrixUser], total: int):
+        for i in range(total):
+            sender = users[i % len(users)]
+            msg = self.generate_random_message()
+            await sender.client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content={
+                    "msgtype": "m.text",
+                    "body": msg,
+                    "m.relates_to": {
+                        "rel_type": "m.thread",
+                        "event_id": thread_root_id,
+                        "is_falling_back": True
+                    }
+                },
+            )
+            logging.info(f"[{sender.full_user_id}] Replied in thread: {msg}")
+            await asyncio.sleep(0.1)
+    
     async def send_alternating_messages(
         self, client1: MatrixUser, client2: MatrixUser, room_id: str, total=300
     ):
@@ -168,10 +220,33 @@ class MatrixMessenger:
             room_id = await self.create_group_room(creator, invitees)
             await self.send_group_messages(room_id, self.users, self.total_messages)
 
+        # Channel threads
+        thread_tasks = []
+
+        for _ in range(self.thread_rooms_count):
+            creator = random.choice(self.users)
+            invitees = [u.full_user_id for u in self.users if u != creator]
+            thread_room_id = await self.create_thread_room(creator, invitees)
+            logging.info(f"Thread room created: {thread_room_id}")
+
+            for _ in range(self.threads_per_room):
+                root_id = await self.create_thread(creator, thread_room_id)
+                logging.info(f"Thread root created: {root_id}")
+
+                if self.use_threading:
+                    thread_tasks.append(
+                        self.send_thread_replies(thread_room_id, root_id, self.users, self.replies_per_thread)
+                    )
+                else:
+                    await self.send_thread_replies(thread_room_id, root_id, self.users, self.replies_per_thread)
+
+        if self.use_threading:
+            await asyncio.gather(*thread_tasks)
+
         await asyncio.gather(*(user.close() for user in self.users))
 
 
-def load_users_from_csv(csv_path='users.csv'):
+def load_users_from_csv(csv_path):
     """Load Matrix users from a CSV file with 'full_user_id' and 'password' columns."""
     
     if not os.path.exists(csv_path):

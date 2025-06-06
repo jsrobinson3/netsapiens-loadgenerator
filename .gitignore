@@ -12,3 +12,5 @@ package-lock.json
 sipp/.DS_Store
 
 .env
+
+venv/
