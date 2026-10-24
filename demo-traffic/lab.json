@@ -1,0 +1,128 @@
+{
+  "description": "Demo traffic for the v46 HubSpot softphone demo user. No secrets in this file: SIP passwords are derived from the server API key at runtime.",
+  "server": "v46",
+  "timeZone": "America/New_York",
+  "emailDomain": "demo-traffic.example.com",
+  "businessHours": { "days": ["Mon", "Tue", "Wed", "Thu", "Fri"], "start": "08:00", "end": "18:00" },
+  "seed": 4010,
+
+  "demoUser": { "domain": "sumnersawesomephones", "ext": "4010", "did": "9803510486", "firstName": "Sumner" },
+
+  "homeDomain": "sumnersawesomephones",
+  "partnerDomain": "onecloud-sbz",
+
+  "protected": {
+    "sumnersawesomephones": ["4010", "1001", "1002", "2000", "6300", "8001"],
+    "onecloud-sbz": ["1000", "1001", "1002", "1003", "1004", "1005", "1006", "1007", "1008", "1009", "1010", "1011", "1012"]
+  },
+
+  "create": {
+    "users": [
+      { "domain": "sumnersawesomephones", "ext": "4011", "first": "Avery",  "last": "Collins", "department": "Sales",   "scope": "Basic User", "callerIdName": "Avery Collins" },
+      { "domain": "sumnersawesomephones", "ext": "4012", "first": "Mateo",  "last": "Ramirez", "department": "Sales",   "scope": "Basic User", "callerIdName": "Mateo Ramirez" },
+      { "domain": "sumnersawesomephones", "ext": "4013", "first": "Priya",  "last": "Nair",    "department": "Support", "scope": "Basic User", "callerIdName": "Priya Nair" },
+      { "domain": "sumnersawesomephones", "ext": "4014", "first": "Jordan", "last": "Hayes",   "department": "Support", "scope": "Basic User", "callerIdName": "Jordan Hayes" },
+
+      { "domain": "onecloud-sbz", "ext": "5101", "first": "Kim",    "last": "Nguyen",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Brightline Dent", "callerIdNumber": "16195550141" },
+      { "domain": "onecloud-sbz", "ext": "5102", "first": "Luis",   "last": "Ortega",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Ortega Freight",  "callerIdNumber": "16195550142" },
+      { "domain": "onecloud-sbz", "ext": "5103", "first": "Rachel", "last": "Stein",   "department": "Load Generator", "scope": "Basic User", "callerIdName": "Stein and Park",  "callerIdNumber": "16195550143" },
+      { "domain": "onecloud-sbz", "ext": "5104", "first": "Tom",    "last": "Becker",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Becker HVAC",     "callerIdNumber": "16195550144" }
+    ]
+  },
+
+  "groups": {
+    "sales":   ["4010", "4011", "4012"],
+    "support": ["4010", "4013", "4014"],
+    "all":     ["4010", "4011", "4012", "4013", "4014"]
+  },
+
+  "streams": {
+    "chatToDemo": {
+      "enabled": true,
+      "ratePerHour": 6,
+      "senders": ["4011", "4012", "4013", "4014"],
+      "burst": { "chance": 0.35, "messages": [2, 4], "gapSeconds": [5, 40] }
+    },
+    "chatCrossTalk": {
+      "enabled": true,
+      "ratePerHour": 4,
+      "participants": ["4011", "4012", "4013", "4014"],
+      "burst": { "chance": 0.5, "messages": [2, 4], "gapSeconds": [5, 40] }
+    },
+    "groupChat": {
+      "enabled": true,
+      "ratePerHour": 3,
+      "groups": ["sales", "support", "all"],
+      "burst": { "chance": 0.4, "messages": [2, 4], "gapSeconds": [5, 40] }
+    },
+    "sms": {
+      "_note": "Disabled: SMS delivery between platform numbers is unverified. Set fromNumber to an SMS-enabled number owned by the sender, then enabled:true.",
+      "enabled": false,
+      "ratePerHour": 2,
+      "senders": [
+        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5104", "fromNumber": null }
+      ],
+      "burst": { "chance": 0.3, "messages": [2, 3], "gapSeconds": [5, 40] }
+    },
+    "inbox": {
+      "_note": "Support Inbox (user 2000) has DID + SMS number 9803510485. Disabled until SMS delivery between platform numbers is verified and the senders have fromNumber set. Members are managed in the UI.",
+      "enabled": false,
+      "ratePerHour": 1,
+      "inboxDomain": "sumnersawesomephones",
+      "inboxNumber": "9803510485",
+      "senders": [
+        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": null },
+        { "domain": "onecloud-sbz", "user": "5104", "fromNumber": null }
+      ],
+      "burst": { "chance": 0.3, "messages": [2, 3], "gapSeconds": [5, 40] }
+    },
+    "callsToDemo": {
+      "enabled": true,
+      "ratePerHour": 2,
+      "callers": ["5101", "5102", "5103", "5104"],
+      "audio": ["g711a-outbound-orig1", "g711a-short-orig1", "g711a-orig"],
+      "talkSeconds": [20, 120]
+    },
+    "callsToInbox": {
+      "_note": "Partner devices dial the Support Inbox DID (inbox.inboxNumber, voice to-user 2000).",
+      "enabled": true,
+      "ratePerHour": 1,
+      "callers": ["5101", "5102", "5103", "5104"],
+      "audio": ["g711a-outbound-orig1", "g711a-short-orig1", "g711a-orig"],
+      "talkSeconds": [20, 90]
+    },
+    "callsCrossTalk": {
+      "enabled": true,
+      "ratePerHour": 3,
+      "callers": ["4011", "4012", "4013", "4014"],
+      "callees": ["4011", "4012", "4013", "4014"],
+      "toDemoChance": 0.25,
+      "audio": ["g711a-outbound-orig1", "g711a-short-orig1", "g711a-orig"],
+      "talkSeconds": [20, 120]
+    }
+  },
+
+  "answerers": {
+    "devices": ["4011", "4012", "4013", "4014", "5101", "5102", "5103", "5104"]
+  },
+
+  "options": {
+    "allowDemoUserReplies": false,
+    "maxConcurrentCalls": 2,
+    "minInterArrivalFactor": 0.15,
+    "maxInterArrivalFactor": 4
+  },
+
+  "sipp": {
+    "cmd": "docker run --rm --network host -v {REPO}:{REPO} -w {REPO}/sipp/scripts loadgen-sipp:3.7.7",
+    "transport": "u1",
+    "answererScenario": "sipp_uas_pcap_g711a.xml",
+    "registerScenario": "register.and.subscribe.sipp.xml",
+    "dialScenario": "sipp_uac_agent_dial.xml"
+  }
+}
