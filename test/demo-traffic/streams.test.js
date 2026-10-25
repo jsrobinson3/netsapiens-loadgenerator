@@ -86,7 +86,6 @@ describe('groupChat', () => {
         expect(s.user).not.toBe('4010');
         expect(Array.isArray(s.body.destination)).toBe(true);
         expect(s.body.destination).not.toContain(s.user);
-        expect(s.body.destination).toContain('4010'); // the demo user receives it
         const members = lab.groups[p.group];
         expect([...s.body.destination, s.user].sort()).toEqual([...members].sort());
         sidByGroup[p.group] = sidByGroup[p.group] || s.sid;

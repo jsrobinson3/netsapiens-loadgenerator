@@ -21,9 +21,9 @@ function makeEngine(over = {}) {
 }
 
 describe('Engine.enabledStreams', () => {
-  test('sms and inbox are off by default, the rest are on', () => {
+  test('sms, inbox and chatToDemo are off by default, the rest are on', () => {
     const { e } = makeEngine();
-    expect(e.enabledStreams()).toEqual(['chatToDemo', 'chatCrossTalk', 'groupChat', 'callsToDemo', 'callsToInbox', 'callsCrossTalk']);
+    expect(e.enabledStreams()).toEqual(['chatCrossTalk', 'groupChat', 'callsToDemo', 'callsToInbox', 'callsCrossTalk']);
   });
 
   test('--once on a disabled sms stream only logs a skip (no sender has a from-number)', async () => {
@@ -147,8 +147,8 @@ describe('Engine scheduling', () => {
   test('start schedules one timer per enabled stream with clamped delays', () => {
     const { e, timers } = makeEngine();
     const started = e.start();
-    expect(started).toHaveLength(6);
-    expect(timers).toHaveLength(6);
+    expect(started).toEqual(e.enabledStreams());
+    expect(timers).toHaveLength(started.length);
     for (const t of timers) expect(t.ms).toBeGreaterThan(0);
   });
 
