@@ -21,9 +21,20 @@ function makeEngine(over = {}) {
 }
 
 describe('Engine.enabledStreams', () => {
-  test('sms, inbox and chatToDemo are off by default, the rest are on', () => {
+  test('the enabled set follows lab.json: sms and inbox are off, the chat and call streams are on', () => {
     const { e } = makeEngine();
-    expect(e.enabledStreams()).toEqual(['chatCrossTalk', 'groupChat', 'callsToDemo', 'callsToInbox', 'callsCrossTalk']);
+    const { ALL_STREAMS } = require('../../demo-traffic/lib/streams');
+    const fromLab = ALL_STREAMS.filter(n => e.lab.streams[n] && e.lab.streams[n].enabled !== false);
+    expect(e.enabledStreams()).toEqual(fromLab);
+    expect(e.enabledStreams()).toEqual(['chatToDemo', 'chatCrossTalk', 'groupChat', 'callsToDemo', 'callsToInbox', 'callsCrossTalk']);
+    expect(e.lab.streams.chatToDemo.ratePerHour).toBe(3);
+  });
+
+  test('disabling a stream in lab.json removes it from the schedule', () => {
+    const lab = freshLab();
+    lab.streams.chatToDemo.enabled = false;
+    const { e } = makeEngine({ lab });
+    expect(e.enabledStreams()).not.toContain('chatToDemo');
   });
 
   test('--once on a disabled sms stream only logs a skip (no sender has a from-number)', async () => {

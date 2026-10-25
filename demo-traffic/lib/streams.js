@@ -11,6 +11,13 @@ const MESSAGE_STREAMS = ['chatToDemo', 'chatCrossTalk', 'groupChat', 'sms', 'inb
 const CALL_STREAMS = ['callsToDemo', 'callsToInbox', 'callsCrossTalk'];
 const ALL_STREAMS = [...MESSAGE_STREAMS, ...CALL_STREAMS];
 
+/** Chat transport from lab.json: "matrix" (v46) or "messagesessions" (default). Only chat streams use it; SMS never does. */
+function chatTransport(lab) {
+    const t = lab.chatTransport || 'messagesessions';
+    if (t !== 'matrix' && t !== 'messagesessions') throw new Error(`lab.json chatTransport must be "matrix" or "messagesessions", got "${t}"`);
+    return t;
+}
+
 function messagePath(domain, user, sid) {
     return `domains/${enc(domain)}/users/${enc(user)}/messagesessions/${sid}/messages`;
 }
@@ -51,6 +58,19 @@ function whenOpts(ctx) {
     return ctx.now === undefined ? {} : { at: ctx.now, timeZone: ctx.lab.timeZone };
 }
 
+// A chat step sent through Matrix (v46): no messagesession id, the engine hands
+// `matrix` to the Matrix transport. `body` is kept for logging only.
+function matrixStep(lab, from, to, group, text, members) {
+    return {
+        transport: 'matrix', domain: lab.homeDomain, user: from, type: 'chat', to: to.join(','),
+        matrix: {
+            domain: lab.homeDomain, from, to, group,
+            ...(group ? { members, groupName: (lab.groupNames && lab.groupNames[group]) || group } : {})
+        },
+        body: { type: 'chat', message: text, destination: group ? to : to[0] }
+    };
+}
+
 function chatToDemo(ctx) {
     const { lab, rng, sessions } = ctx;
     const cfg = lab.streams.chatToDemo;
@@ -61,6 +81,12 @@ function chatToDemo(ctx) {
     const conv = pickConversation(rng, 'toDemo', {
         burst: wantsBurst(ctx, cfg), turns: cfg.burst?.messages, dept: user.department, vars: demoVars(lab), ...whenOpts(ctx)
     });
+    if (chatTransport(lab) === 'matrix') {
+        return {
+            kind: 'messages', stream: 'chatToDemo', burst: conv.burst,
+            steps: buildSteps(ctx, cfg, conv, turn => matrixStep(lab, sender, [demo.ext], null, turn.text))
+        };
+    }
     const sid = sessions.get(sessions.pairKey(lab.homeDomain, sender, demo.ext));
     return {
         kind: 'messages', stream: 'chatToDemo', burst: conv.burst,
@@ -85,11 +111,13 @@ function chatCrossTalk(ctx) {
         burst: wantsBurst(ctx, cfg), turns: cfg.burst?.messages,
         dept: ua.department === ub.department ? ua.department : 'none', vars: demoVars(lab), ...whenOpts(ctx)
     });
+    const viaMatrix = chatTransport(lab) === 'matrix';
     return {
         kind: 'messages', stream: 'chatCrossTalk', burst: conv.burst,
         steps: buildSteps(ctx, cfg, conv, turn => {
             const from = turn.who === 'a' ? a : b;
             const to = turn.who === 'a' ? b : a;
+            if (viaMatrix) return matrixStep(lab, from, [to], null, turn.text);
             const sid = sessions.get(sessions.pairKey(lab.homeDomain, from, to));
             return {
                 domain: lab.homeDomain, user: from, sid, type: 'chat', to,
@@ -116,12 +144,14 @@ function groupChat(ctx) {
     const conv = pickConversation(rng, 'group', {
         burst: wantsBurst(ctx, cfg), turns: cfg.burst?.messages, group: name, vars: demoVars(lab), ...whenOpts(ctx)
     });
-    const sid = sessions.get(sessions.groupKey(lab.homeDomain, name));
+    const viaMatrix = chatTransport(lab) === 'matrix';
+    const sid = viaMatrix ? null : sessions.get(sessions.groupKey(lab.homeDomain, name));
     return {
         kind: 'messages', stream: 'groupChat', burst: conv.burst, group: name,
         steps: buildSteps(ctx, cfg, conv, turn => {
             const from = turn.who === 'a' ? a : speakerB;
             const to = members.filter(ext => ext !== from);
+            if (viaMatrix) return matrixStep(lab, from, to, name, turn.text, members);
             return {
                 domain: lab.homeDomain, user: from, sid, type: 'chat', to: to.join(','),
                 key: sessions.groupKey(lab.homeDomain, name), remotes: to,
@@ -232,4 +262,4 @@ function planStream(name, ctx) {
     return planner({ timeScale: 1, ...ctx });
 }
 
-module.exports = { planStream, MESSAGE_STREAMS, CALL_STREAMS, ALL_STREAMS, messagePath, toE164Digits };
+module.exports = { chatTransport, planStream, MESSAGE_STREAMS, CALL_STREAMS, ALL_STREAMS, messagePath, toE164Digits };

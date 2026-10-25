@@ -40,7 +40,7 @@ function formatLine(e) {
     if (e.reason) detail.push(e.reason);
     if (e.error) detail.push(`error: ${e.error}`);
     let text = [...parts, ...detail].filter(Boolean).join(' ');
-    if (e.request) text += `\n  ${e.request} ${JSON.stringify(e.body)}  (sid ${e.sid}, +${Math.round((e.delayMs || 0) / 1000)}s)`;
+    if (e.request) text += `\n  ${e.request} ${JSON.stringify(e.body)}  (${e.sid ? `sid ${e.sid}, ` : ''}+${Math.round((e.delayMs || 0) / 1000)}s)`;
     return redact(text);
 }
 

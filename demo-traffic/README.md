@@ -9,9 +9,9 @@ messages. Everything is configured in `lab.json` (committed, no secrets).
 
 | Stream | What happens | Default |
 |---|---|---|
-| `chatToDemo` | 4011-4014 send 1:1 chat (multi-turn threads, sometimes bursts) to 4010 | on, 6/hr |
+| `chatToDemo` | 4011-4014 send 1:1 chat (multi-turn threads, sometimes bursts) to 4010 | on, 3/hr |
 | `chatCrossTalk` | 4011-4014 chat among themselves (4010 sees nothing) | on |
-| `groupChat` | 4011-4014 post to a group that includes 4010; 4010 is never the sender | on |
+| `groupChat` | 4011-4014 post to the groups in `lab.json` (4010 is not a member and is never the sender) | on |
 | `callsToDemo` | partner devices 5101-5104 (onecloud-sbz) dial the demo DID 9803510486 | on, 2/hr |
 | `callsToInbox` | partner devices dial the Support Inbox DID 9803510485 (voice to user 2000) | on, 1/hr |
 | `callsCrossTalk` | 4011-4014 call each other (and 4010 25% of the time) | on |
@@ -35,6 +35,35 @@ non-digits stripped, leading `1` dropped from 11-digit NANP numbers, so `9803510
 `19803510486`). A sid is minted only if none exists and is cached in
 `state/demo-traffic/sessions.json` keyed by sender + normalised remote. One lookup per
 conversation per run. `--dry-run` skips the lookup and uses the cached or minted sid.
+
+## Chat transport (`chatTransport` in lab.json)
+
+On v46 the phone and Horizon read chat from Matrix, not from the NS `messagesessions`
+API, so chat posted there is invisible. `"chatTransport": "matrix"` (committed) sends
+`chatToDemo`, `chatCrossTalk` and `groupChat` through Matrix (`lib/matrix.js`);
+`"messagesessions"` (the default when the key is absent, and the only choice on a v45
+core) keeps the old behaviour and the section above. SMS and inbox always use
+messagesessions.
+
+Per message, as the sender (ext only, never 4010 or any protected/onecloud-sbz user):
+
+1. delegated NS JWT: `POST /ns-api/v2/jwt` (server apikey), then
+   `POST /ns-api/v2/matrix/token` with device id `DEMOTRAFFIC<ext>`. Cached in memory per
+   sender, re-minted only on a Matrix 401 (retried once). A 404 means a v45 core and fails
+   with a clear error.
+2. peer Matrix ids come from the sender's contacts (`matrix-user-id`, lowercased, cached 60 s),
+   never built from the extension.
+3. 1:1: reuse the last room for the peer in the sender's `m.direct`, else `createRoom`
+   (`trusted_private_chat`, `is_direct`) and append it to `m.direct` (other entries kept).
+4. group: a named private room (`lab.groupNames`) created once by the first sender with the
+   rest invited, id saved per group in `state/demo-traffic/matrix-rooms.json` and reused.
+5. demo colleagues (4011-4014) run no client, so when one is invited the generator JOINs as
+   that colleague with their own token (and, for 1:1, adds the room to their `m.direct` so
+   replies reuse it). The demo user 4010 is only ever invited, never acted as.
+6. `PUT /rooms/{room}/send/m.room.message/{txn}` with a unique txn id; a burst reuses the room.
+
+`--dry-run` stays offline: it prints the planned Matrix steps (no tokens, no network, no
+files written). Tokens are never logged.
 
 ## Setup
 

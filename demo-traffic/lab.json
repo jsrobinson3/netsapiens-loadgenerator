@@ -5,6 +5,7 @@
   "emailDomain": "demo-traffic.example.com",
   "businessHours": { "days": ["Mon", "Tue", "Wed", "Thu", "Fri"], "start": "08:00", "end": "18:00" },
   "seed": 4010,
+  "chatTransport": "matrix",
 
   "demoUser": { "domain": "sumnersawesomephones", "ext": "4010", "did": "9803510486", "firstName": "Sumner" },
 
@@ -35,11 +36,12 @@
     "support": ["4012", "4013", "4014"],
     "all":     ["4011", "4012", "4013", "4014"]
   },
+  "groupNames": { "sales": "Sales Team", "support": "Support Team", "all": "Everyone" },
 
   "streams": {
     "chatToDemo": {
-      "enabled": false,
-      "ratePerHour": 6,
+      "enabled": true,
+      "ratePerHour": 3,
       "senders": ["4011", "4012", "4013", "4014"],
       "burst": { "chance": 0.35, "messages": [2, 4], "gapSeconds": [5, 40] }
     },

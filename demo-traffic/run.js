@@ -28,8 +28,11 @@ const { CallRunner } = require('./lib/calls');
 const { Answerers } = require('./lib/answerers');
 const { ALL_STREAMS } = require('./lib/streams');
 const sipp = require('./lib/sipp');
+const { MatrixTransport, RoomStore } = require('./lib/matrix');
+const { chatTransport } = require('./lib/streams');
 
 const SESSIONS_FILE = path.join(STATE_DIR, 'sessions.json');
+const MATRIX_ROOMS_FILE = path.join(STATE_DIR, 'matrix-rooms.json');
 
 function parseArgs(argv) {
     const val = flag => { const i = argv.indexOf(flag); return i === -1 ? null : argv[i + 1]; };
@@ -80,8 +83,15 @@ async function main() {
     const busy = new Set();
     const net = makeNet(selectedServer, args.dryRun);
     const calls = new CallRunner({ lab, apikey: selectedServer.apikey, net, dryRun: args.dryRun, events, busy });
+    // v46 chat goes through Matrix; a dry run builds nothing (no tokens, no network).
+    const matrix = !args.dryRun && chatTransport(lab) === 'matrix'
+        ? new MatrixTransport({
+            host: selectedServer.hostname, apikey: selectedServer.apikey, lab,
+            rooms: new RoomStore(MATRIX_ROOMS_FILE)
+        })
+        : null;
     const engine = new Engine({
-        lab, sessions, events, calls, busy,
+        lab, sessions, events, calls, busy, matrix,
         rng: makeRng(`${lab.seed}:${Date.now()}`),
         clock: new SimClock(args.timeScale),
         api: args.dryRun ? null : new ServerApiClient(selectedServer),

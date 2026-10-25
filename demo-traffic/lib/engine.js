@@ -6,12 +6,14 @@
 
 const { planStream, MESSAGE_STREAMS, CALL_STREAMS, ALL_STREAMS, messagePath } = require('./streams');
 const { isBusinessHours, interArrivalMs } = require('./schedule');
+const { describeStep } = require('./matrix');
 
 class Engine {
     /**
      * @param {object} d
      *   lab, rng, sessions, events           (required)
      *   api        { apiPostJson(path, body) }   (live message sends)
+     *   matrix     MatrixTransport { send(step.matrix, text) } (v46 chat; live only, a dry run never calls it)
      *   calls      { run(plan), active, drain() } (call streams)
      *   clock      { now() }                       (SimClock-compatible)
      *   busy       Set of extensions in a demo call (shared with CallRunner)
@@ -118,6 +120,7 @@ class Engine {
             stream: plan.stream, from: `${step.user}@${step.domain}`, to: step.to,
             sid: step.sid, message: step.body.message
         };
+        if (step.transport === 'matrix') return this.sendMatrix(plan, step, ev);
         if (this.dryRun) {
             this.events.log({ ...ev, action: 'message-dry-run', delayMs: step.delayMs, request: `POST ${step.path}`, body: step.body });
             return { ok: true, dry: true };
@@ -126,6 +129,25 @@ class Engine {
             const res = await this.api.apiPostJson(step.path, step.body);
             this.events.log({ ...ev, action: 'message-sent', status: res.status });
             return { ok: true, status: res.status };
+        } catch (e) {
+            this.events.log({ ...ev, action: 'message-failed', error: this.describeApiError(e) });
+            return { ok: false };
+        }
+    }
+
+    /** A v46 chat step: planned Matrix steps in a dry run (offline), the Matrix transport live. */
+    async sendMatrix(plan, step, ev) {
+        if (this.dryRun) {
+            this.events.log({
+                ...ev, action: 'message-dry-run', delayMs: step.delayMs,
+                request: describeStep(step.matrix, step.matrix.groupName), body: step.body
+            });
+            return { ok: true, dry: true };
+        }
+        try {
+            const r = await this.matrix.send(step.matrix, step.body.message);
+            this.events.log({ ...ev, action: 'message-sent', status: r.status, room: r.roomId });
+            return { ok: true, status: r.status };
         } catch (e) {
             this.events.log({ ...ev, action: 'message-failed', error: this.describeApiError(e) });
             return { ok: false };

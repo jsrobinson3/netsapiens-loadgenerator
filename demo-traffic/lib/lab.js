@@ -38,6 +38,9 @@ function validateLab(lab) {
     if (lab.options?.allowDemoUserReplies) {
         problems.push('options.allowDemoUserReplies must stay false: demo-traffic never acts as the demo user');
     }
+    if (lab.chatTransport !== undefined && !['matrix', 'messagesessions'].includes(lab.chatTransport)) {
+        problems.push('chatTransport must be "matrix" or "messagesessions"');
+    }
     const prot = protectedSet(lab);
     const seen = new Set();
     for (const u of lab.create?.users || []) {

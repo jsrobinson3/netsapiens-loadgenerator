@@ -5,8 +5,13 @@ const { SessionStore } = require('../../demo-traffic/lib/sessions');
 
 const APIKEY = 'test-api-key-not-real';
 
-function freshLab() {
-  return JSON.parse(JSON.stringify(loadLab()));
+// The committed lab.json sends v46 chat through Matrix. Most tests exercise the
+// messagesessions path, so the helper pins that unless a test asks otherwise
+// (`freshLab({ chatTransport: 'matrix' })`, or `{ chatTransport: undefined }` to keep lab.json's own).
+function freshLab(overrides = {}) {
+  const lab = JSON.parse(JSON.stringify(loadLab()));
+  lab.chatTransport = 'messagesessions';
+  return Object.assign(lab, overrides);
 }
 
 function memStore() {
