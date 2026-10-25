@@ -53,6 +53,12 @@ function demoVars(lab) {
     return { demo: lab.demoUser.firstName || 'there' };
 }
 
+// The sending customer's own name and company, so a text never signs as someone else.
+function senderVars(lab, sender) {
+    const u = (lab.create?.users || []).find(x => x.domain === sender.domain && x.ext === sender.user) || {};
+    return { first: u.first || 'Hi', company: u.company || u.callerIdName || 'our office' };
+}
+
 // Time-of-day inputs for message selection (omitted when the caller gave no clock).
 function whenOpts(ctx) {
     return ctx.now === undefined ? {} : { at: ctx.now, timeZone: ctx.lab.timeZone };
@@ -172,7 +178,7 @@ function smsLike(ctx, stream, bankKind, destination) {
     }
     const s = rng.pick(senders);
     assertManaged(lab, s.domain, s.user, 'send SMS as');
-    const conv = pickConversation(rng, bankKind, { burst: wantsBurst(ctx, cfg), turns: cfg.burst?.messages, vars: demoVars(lab), ...whenOpts(ctx) });
+    const conv = pickConversation(rng, bankKind, { burst: wantsBurst(ctx, cfg), turns: cfg.burst?.messages, vars: { ...demoVars(lab), ...senderVars(lab, s) }, ...whenOpts(ctx) });
     const sid = sessions.get(sessions.pairKey(s.domain, s.user, destination));
     return {
         kind: 'messages', stream, burst: conv.burst,

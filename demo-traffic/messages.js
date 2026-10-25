@@ -8,7 +8,8 @@
 //   dept: "Sales" | "Support" restricts a thread to senders of that department
 //        (omit for anyone).  groups: restricts a group thread to those group
 //        names (omit for any group).
-//   "{demo}" is replaced with the demo user's first name.
+//   "{demo}" is replaced with the demo user's first name; in the sms bank "{first}" and
+//   "{company}" are the sending customer's (lab.json create.users), so a text never names another company.
 //
 // Selection is seeded (lib/agent-sim/rng), so a seed reproduces the same run.
 
@@ -91,12 +92,12 @@ const group = [
 
 // Customers texting the demo number (one-sided).
 const sms = [
-    { when: ['morning', 'midday'], turns: [t('a', 'Hi, this is Kim from Brightline Dental. Can someone call me back about our invoice?'), t('a', 'Anytime after 1pm is good')] },
+    { when: ['morning', 'midday'], turns: [t('a', 'Hi, this is {first} from {company}. Can someone call me back about our invoice?'), t('a', 'Anytime after 1pm is good')] },
     { turns: [t('a', 'Is my order ready for pickup?')] },
-    { turns: [t('a', 'Hello, Luis from Ortega Freight. Our new numbers are not working yet'), t('a', 'Can you check the port status?')] },
+    { turns: [t('a', 'Hello, {first} from {company}. Our new numbers are not working yet'), t('a', 'Can you check the port status?')] },
     { when: ['midday', 'afternoon'], turns: [t('a', 'Thanks for the quick help earlier!')] },
-    { when: ['afternoon', 'weekday'], turns: [t('a', 'Rachel at Stein & Park here. Do you have availability tomorrow morning for a quick call?'), t('a', 'Preferably before 10')] },
-    { turns: [t('a', 'Tom Becker, we need two more desk phones. Who should I talk to?')] },
+    { when: ['afternoon', 'weekday'], turns: [t('a', '{first} at {company} here. Do you have availability tomorrow morning for a quick call?'), t('a', 'Preferably before 10')] },
+    { turns: [t('a', '{first} from {company}, we need two more desk phones. Who should I talk to?')] },
     { turns: [t('a', 'Confirming our appointment for Thursday at 3pm')] },
     { turns: [t('a', 'Sorry, wrong number. Please disregard')] }
 ];

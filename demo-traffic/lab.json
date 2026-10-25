@@ -24,10 +24,10 @@
       { "domain": "sumnersawesomephones", "ext": "4013", "first": "Priya",  "last": "Nair",    "department": "Support", "scope": "Basic User", "callerIdName": "Priya Nair" },
       { "domain": "sumnersawesomephones", "ext": "4014", "first": "Jordan", "last": "Hayes",   "department": "Support", "scope": "Basic User", "callerIdName": "Jordan Hayes" },
 
-      { "domain": "onecloud-sbz", "ext": "5101", "first": "Kim",    "last": "Nguyen",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Brightline Dent", "callerIdNumber": "16195550141" },
-      { "domain": "onecloud-sbz", "ext": "5102", "first": "Luis",   "last": "Ortega",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Ortega Freight",  "callerIdNumber": "16195550142" },
-      { "domain": "onecloud-sbz", "ext": "5103", "first": "Rachel", "last": "Stein",   "department": "Load Generator", "scope": "Basic User", "callerIdName": "Stein and Park",  "callerIdNumber": "16195550143" },
-      { "domain": "onecloud-sbz", "ext": "5104", "first": "Tom",    "last": "Becker",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Becker HVAC",     "callerIdNumber": "16195550144" }
+      { "domain": "onecloud-sbz", "ext": "5101", "first": "Kim",    "last": "Nguyen",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Brightline Dent", "callerIdNumber": "16195550141", "company": "Brightline Dental" },
+      { "domain": "onecloud-sbz", "ext": "5102", "first": "Luis",   "last": "Ortega",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Ortega Freight",  "callerIdNumber": "16195550142", "company": "Ortega Freight" },
+      { "domain": "onecloud-sbz", "ext": "5103", "first": "Rachel", "last": "Stein",   "department": "Load Generator", "scope": "Basic User", "callerIdName": "Stein and Park",  "callerIdNumber": "16195550143", "company": "Stein & Park Law" },
+      { "domain": "onecloud-sbz", "ext": "5104", "first": "Tom",    "last": "Becker",  "department": "Load Generator", "scope": "Basic User", "callerIdName": "Becker HVAC",     "callerIdNumber": "16195550144", "company": "Becker HVAC" }
     ]
   },
 
@@ -58,28 +58,26 @@
       "burst": { "chance": 0.4, "messages": [2, 4], "gapSeconds": [5, 40] }
     },
     "sms": {
-      "_note": "Disabled: SMS delivery between platform numbers is unverified. Set fromNumber to an SMS-enabled number owned by the sender, then enabled:true.",
-      "enabled": false,
+      "_note": "Outside customers text the demo user's DID. Each sender's fromNumber is an onecloud-sbz SMS number routed to that sender (verified live 2026-10-25). 5104 has no SMS number.",
+      "enabled": true,
       "ratePerHour": 2,
       "senders": [
-        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5104", "fromNumber": null }
+        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": "9803510482" },
+        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": "9803510483" },
+        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": "9803510484" }
       ],
       "burst": { "chance": 0.3, "messages": [2, 3], "gapSeconds": [5, 40] }
     },
     "inbox": {
-      "_note": "Support Inbox (user 2000) has DID + SMS number 9803510485. Disabled until SMS delivery between platform numbers is verified and the senders have fromNumber set. Members are managed in the UI.",
-      "enabled": false,
+      "_note": "Support Inbox (user 2000) has DID + SMS number 9803510485; outside customers text it. Members are managed in the UI.",
+      "enabled": true,
       "ratePerHour": 1,
       "inboxDomain": "sumnersawesomephones",
       "inboxNumber": "9803510485",
       "senders": [
-        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": null },
-        { "domain": "onecloud-sbz", "user": "5104", "fromNumber": null }
+        { "domain": "onecloud-sbz", "user": "5101", "fromNumber": "9803510482" },
+        { "domain": "onecloud-sbz", "user": "5102", "fromNumber": "9803510483" },
+        { "domain": "onecloud-sbz", "user": "5103", "fromNumber": "9803510484" }
       ],
       "burst": { "chance": 0.3, "messages": [2, 3], "gapSeconds": [5, 40] }
     },

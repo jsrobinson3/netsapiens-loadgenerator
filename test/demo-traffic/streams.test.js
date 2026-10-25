@@ -136,15 +136,39 @@ describe('allowDemoUserReplies', () => {
 });
 
 describe('sms and inbox streams', () => {
-  test('are disabled by default in lab.json', () => {
+  test('a customer text only ever names the sender and their own company', () => {
     const lab = freshLab();
-    expect(lab.streams.sms.enabled).toBe(false);
-    expect(lab.streams.inbox.enabled).toBe(false);
+    const companies = lab.create.users.filter(u => u.company).map(u => ({ ext: u.ext, first: u.first, company: u.company }));
+    for (let seed = 1; seed <= 60; seed++) {
+      const p = plan('sms', seed, { lab });
+      if (p.kind !== 'messages') continue;
+      const sender = companies.find(c => c.ext === p.steps[0].user);
+      for (const step of p.steps) {
+        const text = step.body.message;
+        expect(text).not.toMatch(/\{(first|company)\}/);
+        for (const other of companies.filter(c => c.ext !== sender.ext)) {
+          expect(text).not.toContain(other.company);
+          expect(text).not.toMatch(new RegExp(`\\b${other.first}\\b`));
+        }
+      }
+    }
+  });
+
+  test('are enabled in lab.json, each sender with a 10-digit SMS number', () => {
+    const lab = freshLab();
+    expect(lab.streams.sms.enabled).toBe(true);
+    expect(lab.streams.inbox.enabled).toBe(true);
+    for (const s of [...lab.streams.sms.senders, ...lab.streams.inbox.senders]) {
+      expect(s.fromNumber).toMatch(/^\d{10}$/);
+    }
   });
 
   test('plan a skip while no sender has a from-number / the inbox has no number', () => {
-    expect(plan('sms', 1)).toMatchObject({ kind: 'skip', stream: 'sms' });
-    expect(plan('inbox', 1)).toMatchObject({ kind: 'skip', stream: 'inbox' }); // senders have no fromNumber
+    const noNumbers = freshLab();
+    noNumbers.streams.sms.senders.forEach(s => { s.fromNumber = null; });
+    noNumbers.streams.inbox.senders.forEach(s => { s.fromNumber = null; });
+    expect(plan('sms', 1, { lab: noNumbers })).toMatchObject({ kind: 'skip', stream: 'sms' });
+    expect(plan('inbox', 1, { lab: noNumbers })).toMatchObject({ kind: 'skip', stream: 'inbox' }); // senders have no fromNumber
     const lab = freshLab();
     lab.streams.inbox.senders.forEach(s => { s.fromNumber = '16195550141'; });
     lab.streams.inbox.inboxNumber = null;

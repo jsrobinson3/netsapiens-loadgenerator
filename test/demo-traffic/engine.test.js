@@ -21,12 +21,12 @@ function makeEngine(over = {}) {
 }
 
 describe('Engine.enabledStreams', () => {
-  test('the enabled set follows lab.json: sms and inbox are off, the chat and call streams are on', () => {
+  test('the enabled set follows lab.json: every stream, sms and inbox included, is on', () => {
     const { e } = makeEngine();
     const { ALL_STREAMS } = require('../../demo-traffic/lib/streams');
     const fromLab = ALL_STREAMS.filter(n => e.lab.streams[n] && e.lab.streams[n].enabled !== false);
     expect(e.enabledStreams()).toEqual(fromLab);
-    expect(e.enabledStreams()).toEqual(['chatToDemo', 'chatCrossTalk', 'groupChat', 'callsToDemo', 'callsToInbox', 'callsCrossTalk']);
+    expect(e.enabledStreams()).toEqual(expect.arrayContaining(['sms', 'inbox', 'chatToDemo', 'callsToDemo']));
     expect(e.lab.streams.chatToDemo.ratePerHour).toBe(3);
   });
 
@@ -37,8 +37,10 @@ describe('Engine.enabledStreams', () => {
     expect(e.enabledStreams()).not.toContain('chatToDemo');
   });
 
-  test('--once on a disabled sms stream only logs a skip (no sender has a from-number)', async () => {
-    const { e, ev } = makeEngine();
+  test('--once on sms only logs a skip when no sender has a from-number', async () => {
+    const lab = freshLab();
+    lab.streams.sms.senders.forEach(s => { s.fromNumber = null; });
+    const { e, ev } = makeEngine({ lab });
     const r = await e.fire('sms');
     expect(r.plan.kind).toBe('skip');
     expect(ev.lines[0]).toMatchObject({ stream: 'sms', action: 'skipped' });
