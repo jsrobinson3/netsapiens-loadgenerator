@@ -3,21 +3,21 @@
 // build.js - bring the demo-traffic users and their devices up to date on a
 // server, from demo-traffic/lab.json ("create.users" is the only source).
 //
-//   node demo-traffic/build.js --server v46 [--dry-run] [--only 4011,5101]
+//   node demo-traffic/build.js --server v46 [--lab <path>] [--dry-run] [--only 4011,5101]
 //
 // Idempotent: each user and device is POSTed, and on 409 (already exists) PUT.
 // It never touches an extension that is not in create.users (it throws), and
 // never the demo user or the protected 1000-series users. Writes
-// state/demo-traffic/devices.csv (gitignored: it holds SIP passwords) for
+// state/demo-traffic/[<lab id>/]devices.csv (gitignored: it holds SIP passwords) for
 // both domains' devices. --dry-run prints the planned requests with secrets
 // redacted and works offline (no request is sent, no file is written).
 
 const fs = require('fs');
 const path = require('path');
-const { loadLab, assertManaged, devicePassword, deviceCsv, redact, REPO, STATE_DIR } = require('./lib/lab');
+const { loadLab, assertManaged, devicePassword, deviceCsv, redact, findPlaceholders, labStateDir, REPO, STATE_DIR } = require('./lib/lab');
 
 const enc = encodeURIComponent;
-const DEVICES_CSV = path.join(STATE_DIR, 'devices.csv');
+const DEVICES_CSV = path.join(STATE_DIR, 'devices.csv'); // the default lab's file
 
 /** Requests for one user: the user itself, then its device. Throws unless managed. */
 function planUser(lab, user, apikey) {
@@ -96,19 +96,25 @@ async function runBuild({ lab, client, apikey, dryRun, only = null, out = consol
             }
         }
     }
+    const devicesCsv = path.join(labStateDir(lab), 'devices.csv');
     const devices = only ? lab.create.users.filter(u => only.includes(u.ext)) : lab.create.users;
     if (dryRun) {
-        out(`DRY RUN would write ${path.relative(REPO, DEVICES_CSV)} with ${lab.create.users.length} devices (passwords not shown)`);
+        out(`DRY RUN would write ${path.relative(REPO, devicesCsv)} with ${lab.create.users.length} devices (passwords not shown)`);
     } else if (!only) {
-        fs.mkdirSync(path.dirname(DEVICES_CSV), { recursive: true });
-        fs.writeFileSync(DEVICES_CSV, deviceCsv(devices, apikey), { mode: 0o600 });
-        out(`wrote ${path.relative(REPO, DEVICES_CSV)} (${devices.length} devices)`);
+        fs.mkdirSync(path.dirname(devicesCsv), { recursive: true });
+        fs.writeFileSync(devicesCsv, deviceCsv(devices, apikey), { mode: 0o600 });
+        out(`wrote ${path.relative(REPO, devicesCsv)} (${devices.length} devices)`);
     }
     return result;
 }
 
 function parseArgs(argv) {
-    const args = { dryRun: argv.includes('--dry-run'), only: null };
+    const args = { dryRun: argv.includes('--dry-run'), only: null, lab: undefined };
+    const l = argv.indexOf('--lab');
+    if (l !== -1) {
+        args.lab = argv[l + 1];
+        if (!args.lab) throw new Error('--lab needs a path to a lab file');
+    }
     const i = argv.indexOf('--only');
     if (i !== -1) args.only = String(argv[i + 1] || '').split(',').map(s => s.trim()).filter(Boolean);
     return args;
@@ -120,11 +126,15 @@ async function main() {
     const { loadConfig } = require('../lib/config');
     const { ServerApiClient, describeApiError } = require('../lib/nsapi');
     const { selectedServer } = loadConfig();
-    const lab = loadLab();
-    if (lab.server && selectedServer.id !== lab.server) {
-        throw new Error(`lab.json is for server "${lab.server}" but --server selected "${selectedServer.id}"`);
-    }
     const args = parseArgs(process.argv.slice(2));
+    const lab = loadLab(args.lab);
+    if (lab.server && selectedServer.id !== lab.server) {
+        throw new Error(`the lab file is for server "${lab.server}" but --server selected "${selectedServer.id}"`);
+    }
+    const todo = findPlaceholders(lab);
+    if (todo.length) {
+        throw new Error(`the lab file still has TODO placeholders (fill them from the inventory): ${todo.slice(0, 8).join(', ')}${todo.length > 8 ? `, ... (${todo.length} total)` : ''}`);
+    }
     const client = args.dryRun ? null : new ServerApiClient(selectedServer);
     console.log(`[${selectedServer.id}] demo-traffic build${args.dryRun ? ' (dry run)' : ''}`);
     const r = await runBuild({ lab, client, apikey: selectedServer.apikey, dryRun: args.dryRun, only: args.only, describeApiError });

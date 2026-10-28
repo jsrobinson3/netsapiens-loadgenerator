@@ -9,17 +9,33 @@ const path = require('path');
 const dns = require('dns');
 const dgram = require('dgram');
 const https = require('https');
-const { REPO, STATE_DIR, deviceCsv, deviceRow, devicePassword, assertManaged, userByExt } = require('./lab');
+const { REPO, STATE_DIR, labStateDir, deviceCsv, deviceRow, devicePassword, assertManaged, userByExt } = require('./lab');
 
-const WORK_DIR = path.join(STATE_DIR, 'work');
+const WORK_DIR = path.join(STATE_DIR, 'work'); // the default (un-namespaced) lab
+/** Per-lab scratch dir for templated scenarios and CSVs. */
+function workDir(lab) {
+    return path.join(labStateDir(lab), 'work');
+}
 const SCRIPTS_DIR = path.join(REPO, 'sipp', 'scripts');
 const PCAP_DIR = path.join(SCRIPTS_DIR, 'pcaps');
 const UA = 'demo-traffic';
 
-// Ports: clear of the loadgen port-allocator pool and the callback UAS.
+// Ports: clear of the loadgen port-allocator pool and the callback UAS. SIPp runs
+// on the host network, so two daemons on one host need disjoint ports: a lab sets
+// sipp.portOffset (0-300, default 0); SIP and control ports shift by it and media
+// ports by 10x it. Use 0 for the first lab and 300 for the next (any 200+ is clear
+// of the default ranges).
 const ANSWERER_PORTS = { sip: 5090, control: 5091, media: 61000 };
-function slotPorts(slot) {
-    return { sip: 5100 + slot, control: 5200 + slot, media: 62000 + 10 * slot };
+function offsetOf(lab) {
+    return Number(lab?.sipp?.portOffset) || 0;
+}
+function answererPorts(lab) {
+    const o = offsetOf(lab);
+    return { sip: ANSWERER_PORTS.sip + o, control: ANSWERER_PORTS.control + o, media: ANSWERER_PORTS.media + 10 * o };
+}
+function slotPorts(slot, lab) {
+    const o = offsetOf(lab);
+    return { sip: 5100 + slot + o, control: 5200 + slot + o, media: 62000 + 10 * slot + 10 * o };
 }
 
 /** Fill __AUDIO__, __TALK_MS__ and [media_ip] in a copy of sipp_uac_agent_dial.xml. */
@@ -50,8 +66,8 @@ function sippPrefix(lab, name) {
     return tokens;
 }
 
-function ports(slot) {
-    return slot === 'answerers' ? ANSWERER_PORTS : slotPorts(slot);
+function ports(slot, lab) {
+    return slot === 'answerers' ? answererPorts(lab) : slotPorts(slot, lab);
 }
 
 /**
@@ -59,7 +75,7 @@ function ports(slot) {
  * host) SIP destination.
  */
 function buildCallArgv({ lab, name, sut, scenarioPath, csvPath, localIp, slot, target, talkMs }) {
-    const p = ports(slot);
+    const p = ports(slot, lab);
     return [
         ...sippPrefix(lab, name),
         sut,
@@ -87,7 +103,7 @@ function answererUsers(lab) {
 
 /** Same invocation as sipp/scripts/register.sh, minus -bg and the stats files. */
 function buildAnswererArgv({ lab, name, sut, uasPath, csvPath, localIp, count }) {
-    const p = ANSWERER_PORTS;
+    const p = answererPorts(lab);
     return [
         ...sippPrefix(lab, name),
         sut,
@@ -168,7 +184,7 @@ function publicIpv4() {
 }
 
 module.exports = {
-    WORK_DIR, SCRIPTS_DIR, PCAP_DIR, UA, ANSWERER_PORTS, slotPorts,
+    WORK_DIR, workDir, SCRIPTS_DIR, PCAP_DIR, UA, ANSWERER_PORTS, answererPorts, slotPorts,
     renderDialScenario, renderAnswererScenario, callerCsv, deviceCsv, userByExt,
     sippPrefix, buildCallArgv, buildAnswererArgv, answererUsers,
     shellQuote, formatCommand, readTemplate, pcapExists,

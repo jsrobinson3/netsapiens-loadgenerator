@@ -16,10 +16,46 @@ const HARD_PROTECTED = {
     'onecloud-sbz': Array.from({ length: 13 }, (_, i) => String(1000 + i))
 };
 
+const LAB_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
+/** A lab file path as given on the command line: relative paths resolve from the repo root. */
+function resolveLabPath(file = LAB_PATH) {
+    return path.resolve(REPO, file);
+}
+
+/**
+ * Load and validate a lab file. Sets lab.id (the per-environment state namespace):
+ * the file's own "id", else its basename without .json, EXCEPT the default
+ * lab.json with no "id", which keeps lab.id unset so its state stays in the
+ * original un-namespaced state/demo-traffic/ (the running v46 daemon's files).
+ */
 function loadLab(file = LAB_PATH) {
-    const lab = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const resolved = resolveLabPath(file);
+    let raw;
+    try {
+        raw = fs.readFileSync(resolved, 'utf8');
+    } catch (e) {
+        throw new Error(`Cannot read lab file ${resolved}: ${e.message}`);
+    }
+    const lab = JSON.parse(raw);
+    if (lab.id === undefined && resolved !== LAB_PATH) lab.id = path.basename(resolved, '.json');
     validateLab(lab);
     return lab;
+}
+
+/** Where this lab's runtime state lives: state/demo-traffic[/<id>]. */
+function labStateDir(lab) {
+    return lab && lab.id ? path.join(STATE_DIR, lab.id) : STATE_DIR;
+}
+
+/** Lab values still holding a TODO placeholder (from lab.v46lab.example.json), as JSON paths. */
+function findPlaceholders(node, trail = '') {
+    if (typeof node === 'string') return /^TODO(-|$)/.test(node) ? [trail] : [];
+    if (Array.isArray(node)) return node.flatMap((v, i) => findPlaceholders(v, `${trail}[${i}]`));
+    if (node && typeof node === 'object') {
+        return Object.entries(node).flatMap(([k, v]) => findPlaceholders(v, trail ? `${trail}.${k}` : k));
+    }
+    return [];
 }
 
 function protectedSet(lab) {
@@ -34,6 +70,13 @@ function protectedSet(lab) {
 
 function validateLab(lab) {
     const problems = [];
+    if (lab.id !== undefined && !LAB_ID_RE.test(String(lab.id))) {
+        problems.push('id must be letters, digits, "_" or "-" (it names the state directory)');
+    }
+    const off = lab.sipp?.portOffset;
+    if (off !== undefined && !(Number.isInteger(off) && off >= 0 && off <= 300)) {
+        problems.push('sipp.portOffset must be an integer from 0 to 300');
+    }
     if (!lab.demoUser?.domain || !lab.demoUser?.ext || !lab.demoUser?.did) problems.push('demoUser needs domain, ext and did');
     if (lab.options?.allowDemoUserReplies) {
         problems.push('options.allowDemoUserReplies must stay false: demo-traffic never acts as the demo user');
@@ -108,6 +151,6 @@ function redact(text) {
 
 module.exports = {
     REPO, LAB_PATH, STATE_DIR, HARD_PROTECTED,
-    loadLab, validateLab, managedUsers, isProtected, assertManaged, isKnownTarget, userByExt,
+    resolveLabPath, labStateDir, findPlaceholders, loadLab, validateLab, managedUsers, isProtected, assertManaged, isKnownTarget, userByExt,
     devicePassword, deviceRow, deviceCsv, redact
 };

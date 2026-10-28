@@ -141,6 +141,61 @@ describe('ConfigLoader', () => {
     });
   });
 
+  describe('apikeyEnv', () => {
+    const serversJson = {
+      servers: [
+        { id: 'a', hostname: 'a.example.com', apikey: 'inline-key' },
+        { id: 'envsrv', hostname: 'env.example.com', apikeyEnv: 'TEST_ENVSRV_KEY' }
+      ]
+    };
+
+    beforeEach(() => {
+      delete process.env.TEST_ENVSRV_KEY;
+      jest.spyOn(fs, 'existsSync').mockImplementation(p => p.endsWith('servers.json'));
+      jest.spyOn(fs, 'readFileSync').mockImplementation(p => (p.endsWith('servers.json') ? JSON.stringify(serversJson) : ''));
+      jest.spyOn(console, 'log').mockImplementation(() => {});
+    });
+
+    test('resolves the key from the environment at load time', () => {
+      process.env.TEST_ENVSRV_KEY = 'from-env-key';
+      process.argv = ['node', 'run.js', '--server', 'envsrv'];
+      const { selectedServer } = new ConfigLoader().load();
+      expect(selectedServer.apikey).toBe('from-env-key');
+    });
+
+    test('an unset variable is a clear error naming the variable, never the key', () => {
+      process.argv = ['node', 'run.js', '--server', 'envsrv'];
+      expect(() => new ConfigLoader().load()).toThrow(/apikeyEnv "TEST_ENVSRV_KEY".*unset or empty/);
+    });
+
+    test('an empty variable is the same error', () => {
+      process.env.TEST_ENVSRV_KEY = '';
+      process.argv = ['node', 'run.js', '--server', 'envsrv'];
+      expect(() => new ConfigLoader().load()).toThrow(/TEST_ENVSRV_KEY/);
+    });
+
+    test('an unset variable on a server that is not selected does not block the run', () => {
+      process.argv = ['node', 'run.js', '--server', 'a'];
+      const { selectedServer } = new ConfigLoader().load();
+      expect(selectedServer.apikey).toBe('inline-key');
+    });
+
+    test('an inline apikey wins over apikeyEnv', () => {
+      serversJson.servers.push({ id: 'both', hostname: 'both.example.com', apikey: 'inline', apikeyEnv: 'TEST_ENVSRV_KEY' });
+      process.env.TEST_ENVSRV_KEY = 'env';
+      process.argv = ['node', 'run.js', '--server', 'both'];
+      expect(new ConfigLoader().load().selectedServer.apikey).toBe('inline');
+      serversJson.servers.pop();
+    });
+
+    test('the key is never printed', () => {
+      process.env.TEST_ENVSRV_KEY = 'super-secret-value';
+      process.argv = ['node', 'run.js', '--server', 'envsrv'];
+      new ConfigLoader().load();
+      expect(JSON.stringify(console.log.mock.calls)).not.toContain('super-secret-value');
+    });
+  });
+
   describe('validation', () => {
     beforeEach(() => {
       jest.spyOn(fs, 'existsSync').mockImplementation((p) => {

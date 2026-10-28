@@ -1,0 +1,368 @@
+{
+  "description": "TEMPLATE, not runnable: demo traffic for the v46lab HubSpot phone demo user (1001@onecloud.com). Every TODO-... value must be replaced from the v46lab inventory before use (run.js and build.js refuse to start while any remain). Copy to demo-traffic/lab.v46lab.json (or keep this name) and run with --server v46lab --lab <file>. All streams are disabled here; enable them one at a time. No secrets in this file: the server API key comes from servers.json (apikeyEnv V46LAB_NS_API_KEY).",
+  "id": "v46lab",
+  "server": "v46lab",
+  "timeZone": "America/New_York",
+  "emailDomain": "demo-traffic.example.com",
+  "businessHours": {
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri"
+    ],
+    "start": "08:00",
+    "end": "18:00"
+  },
+  "seed": 1001,
+  "chatTransport": "matrix",
+  "demoUser": {
+    "domain": "onecloud.com",
+    "ext": "1001",
+    "did": "TODO-demo-did",
+    "firstName": "TODO-demo-first-name"
+  },
+  "homeDomain": "onecloud.com",
+  "partnerDomain": "TODO-partner-domain",
+  "protected": {
+    "onecloud.com": [
+      "1001",
+      "TODO-other-protected-ext (every real user in the home domain)"
+    ],
+    "TODO-partner-domain": [
+      "TODO-every real user in the partner domain"
+    ]
+  },
+  "create": {
+    "users": [
+      {
+        "domain": "onecloud.com",
+        "ext": "TODO-colleague-ext-1",
+        "first": "Avery",
+        "last": "Collins",
+        "department": "Sales",
+        "scope": "Basic User",
+        "callerIdName": "Avery Collins"
+      },
+      {
+        "domain": "onecloud.com",
+        "ext": "TODO-colleague-ext-2",
+        "first": "Mateo",
+        "last": "Ramirez",
+        "department": "Sales",
+        "scope": "Basic User",
+        "callerIdName": "Mateo Ramirez"
+      },
+      {
+        "domain": "onecloud.com",
+        "ext": "TODO-colleague-ext-3",
+        "first": "Priya",
+        "last": "Nair",
+        "department": "Support",
+        "scope": "Basic User",
+        "callerIdName": "Priya Nair"
+      },
+      {
+        "domain": "onecloud.com",
+        "ext": "TODO-colleague-ext-4",
+        "first": "Jordan",
+        "last": "Hayes",
+        "department": "Support",
+        "scope": "Basic User",
+        "callerIdName": "Jordan Hayes"
+      },
+      {
+        "domain": "TODO-partner-domain",
+        "ext": "TODO-partner-ext-1",
+        "first": "Kim",
+        "last": "Nguyen",
+        "department": "Load Generator",
+        "scope": "Basic User",
+        "callerIdName": "Brightline Dent",
+        "callerIdNumber": "16195550141",
+        "company": "Brightline Dental"
+      },
+      {
+        "domain": "TODO-partner-domain",
+        "ext": "TODO-partner-ext-2",
+        "first": "Luis",
+        "last": "Ortega",
+        "department": "Load Generator",
+        "scope": "Basic User",
+        "callerIdName": "Ortega Freight",
+        "callerIdNumber": "16195550142",
+        "company": "Ortega Freight"
+      },
+      {
+        "domain": "TODO-partner-domain",
+        "ext": "TODO-partner-ext-3",
+        "first": "Rachel",
+        "last": "Stein",
+        "department": "Load Generator",
+        "scope": "Basic User",
+        "callerIdName": "Stein and Park",
+        "callerIdNumber": "16195550143",
+        "company": "Stein & Park Law"
+      },
+      {
+        "domain": "TODO-partner-domain",
+        "ext": "TODO-partner-ext-4",
+        "first": "Tom",
+        "last": "Becker",
+        "department": "Load Generator",
+        "scope": "Basic User",
+        "callerIdName": "Becker HVAC",
+        "callerIdNumber": "16195550144",
+        "company": "Becker HVAC"
+      }
+    ]
+  },
+  "groups": {
+    "sales": [
+      "TODO-colleague-ext-1",
+      "TODO-colleague-ext-2",
+      "TODO-colleague-ext-3"
+    ],
+    "support": [
+      "TODO-colleague-ext-2",
+      "TODO-colleague-ext-3",
+      "TODO-colleague-ext-4"
+    ],
+    "all": [
+      "TODO-colleague-ext-1",
+      "TODO-colleague-ext-2",
+      "TODO-colleague-ext-3",
+      "TODO-colleague-ext-4"
+    ]
+  },
+  "groupNames": {
+    "sales": "Sales Team",
+    "support": "Support Team",
+    "all": "Everyone"
+  },
+  "streams": {
+    "chatToDemo": {
+      "enabled": false,
+      "ratePerHour": 3,
+      "senders": [
+        "TODO-colleague-ext-1",
+        "TODO-colleague-ext-2",
+        "TODO-colleague-ext-3",
+        "TODO-colleague-ext-4"
+      ],
+      "burst": {
+        "chance": 0.35,
+        "messages": [
+          2,
+          4
+        ],
+        "gapSeconds": [
+          5,
+          40
+        ]
+      }
+    },
+    "chatCrossTalk": {
+      "enabled": false,
+      "ratePerHour": 4,
+      "participants": [
+        "TODO-colleague-ext-1",
+        "TODO-colleague-ext-2",
+        "TODO-colleague-ext-3",
+        "TODO-colleague-ext-4"
+      ],
+      "burst": {
+        "chance": 0.5,
+        "messages": [
+          2,
+          4
+        ],
+        "gapSeconds": [
+          5,
+          40
+        ]
+      }
+    },
+    "groupChat": {
+      "enabled": false,
+      "ratePerHour": 3,
+      "groups": [
+        "sales",
+        "support",
+        "all"
+      ],
+      "burst": {
+        "chance": 0.4,
+        "messages": [
+          2,
+          4
+        ],
+        "gapSeconds": [
+          5,
+          40
+        ]
+      }
+    },
+    "sms": {
+      "_note": "Partner users text the demo user's DID. Each sender's fromNumber must be an SMS number routed to that sender (TODO from the inventory).",
+      "enabled": false,
+      "ratePerHour": 2,
+      "senders": [
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-1",
+          "fromNumber": "TODO-sms-number-1"
+        },
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-2",
+          "fromNumber": "TODO-sms-number-2"
+        },
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-3",
+          "fromNumber": "TODO-sms-number-3"
+        }
+      ],
+      "burst": {
+        "chance": 0.3,
+        "messages": [
+          2,
+          3
+        ],
+        "gapSeconds": [
+          5,
+          40
+        ]
+      }
+    },
+    "inbox": {
+      "_note": "Shared inbox number the partner users text; TODO until the inventory names it.",
+      "enabled": false,
+      "ratePerHour": 1,
+      "inboxDomain": "onecloud.com",
+      "inboxNumber": "TODO-inbox-number",
+      "senders": [
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-1",
+          "fromNumber": "TODO-sms-number-1"
+        },
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-2",
+          "fromNumber": "TODO-sms-number-2"
+        },
+        {
+          "domain": "TODO-partner-domain",
+          "user": "TODO-partner-ext-3",
+          "fromNumber": "TODO-sms-number-3"
+        }
+      ],
+      "burst": {
+        "chance": 0.3,
+        "messages": [
+          2,
+          3
+        ],
+        "gapSeconds": [
+          5,
+          40
+        ]
+      }
+    },
+    "callsToDemo": {
+      "enabled": false,
+      "ratePerHour": 2,
+      "callers": [
+        "TODO-partner-ext-1",
+        "TODO-partner-ext-2",
+        "TODO-partner-ext-3",
+        "TODO-partner-ext-4"
+      ],
+      "audio": [
+        "g711a-outbound-orig1",
+        "g711a-short-orig1",
+        "g711a-orig"
+      ],
+      "talkSeconds": [
+        20,
+        120
+      ]
+    },
+    "callsToInbox": {
+      "_note": "Partner devices dial the shared inbox number (inbox.inboxNumber).",
+      "enabled": false,
+      "ratePerHour": 1,
+      "callers": [
+        "TODO-partner-ext-1",
+        "TODO-partner-ext-2",
+        "TODO-partner-ext-3",
+        "TODO-partner-ext-4"
+      ],
+      "audio": [
+        "g711a-outbound-orig1",
+        "g711a-short-orig1",
+        "g711a-orig"
+      ],
+      "talkSeconds": [
+        20,
+        90
+      ]
+    },
+    "callsCrossTalk": {
+      "enabled": false,
+      "ratePerHour": 3,
+      "callers": [
+        "TODO-colleague-ext-1",
+        "TODO-colleague-ext-2",
+        "TODO-colleague-ext-3",
+        "TODO-colleague-ext-4"
+      ],
+      "callees": [
+        "TODO-colleague-ext-1",
+        "TODO-colleague-ext-2",
+        "TODO-colleague-ext-3",
+        "TODO-colleague-ext-4"
+      ],
+      "toDemoChance": 0.25,
+      "audio": [
+        "g711a-outbound-orig1",
+        "g711a-short-orig1",
+        "g711a-orig"
+      ],
+      "talkSeconds": [
+        20,
+        120
+      ]
+    }
+  },
+  "answerers": {
+    "devices": [
+      "TODO-colleague-ext-1",
+      "TODO-colleague-ext-2",
+      "TODO-colleague-ext-3",
+      "TODO-colleague-ext-4",
+      "TODO-partner-ext-1",
+      "TODO-partner-ext-2",
+      "TODO-partner-ext-3",
+      "TODO-partner-ext-4"
+    ]
+  },
+  "options": {
+    "allowDemoUserReplies": false,
+    "maxConcurrentCalls": 2,
+    "minInterArrivalFactor": 0.15,
+    "maxInterArrivalFactor": 4
+  },
+  "sipp": {
+    "_note": "portOffset keeps this daemon's SIPp host-network ports clear of another lab running on the same host (the default lab uses 0).",
+    "portOffset": 300,
+    "cmd": "docker run --rm --network host -v {REPO}:{REPO} -w {REPO}/sipp/scripts loadgen-sipp:3.7.7",
+    "transport": "u1",
+    "answererScenario": "sipp_uas_pcap_g711a.xml",
+    "registerScenario": "register.and.subscribe.sipp.xml",
+    "dialScenario": "sipp_uac_agent_dial.xml"
+  }
+}

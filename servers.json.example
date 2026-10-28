@@ -52,6 +52,14 @@
       "sendRtp": 1,
       "seed": 22222,
       "description": "Example with non-standard SIP ports. Optional sipPort (UDP/TCP, default 5060) and sipTlsPort (TLS, default 5061) override the destination port SIPp sends to. API still uses HTTPS on 443."
+    },
+    {
+      "_comment": "Example: instead of an inline apikey, apikeyEnv names an environment variable holding the key (export V46LAB_NS_API_KEY=... before running). Resolved when the server is selected; a clear error is raised if it is unset or empty. Remove this _comment line if you like; unknown keys are ignored.",
+      "id": "v46lab",
+      "hostname": "v46lab.ucaas.tech",
+      "ndpServerName": "core1-phx",
+      "apikeyEnv": "V46LAB_NS_API_KEY",
+      "description": "OneCloud v46lab - HubSpot phone demo traffic (dev-staging demo user)"
     }
   ]
 }

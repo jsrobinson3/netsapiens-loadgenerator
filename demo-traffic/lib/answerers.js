@@ -10,16 +10,21 @@ const { spawn, spawnSync } = require('child_process');
 const { REPO, redact } = require('./lab');
 const sipp = require('./sipp');
 
-const CONTAINER = 'demo-traffic-answerers';
+const CONTAINER = 'demo-traffic-answerers'; // the default (un-namespaced) lab's container
+
+/** One container per lab so two daemons never `docker rm -f` each other's answerers. */
+function containerName(lab) {
+    return lab && lab.id ? `${CONTAINER}-${lab.id}` : CONTAINER;
+}
 
 /** Everything an answerer start needs, without writing or spawning. */
 function prepareAnswerers(lab, { apikey, sut, localIp, mediaIp, uasTemplate }) {
     const users = sipp.answererUsers(lab);
-    const uasPath = path.join(sipp.WORK_DIR, 'answerers-uas.xml');
-    const csvPath = path.join(sipp.WORK_DIR, 'answerers.csv');
+    const uasPath = path.join(sipp.workDir(lab), 'answerers-uas.xml');
+    const csvPath = path.join(sipp.workDir(lab), 'answerers.csv');
     const csv = sipp.deviceCsv(users, apikey);
     const argv = sipp.buildAnswererArgv({
-        lab, name: CONTAINER, sut, uasPath, csvPath, localIp, count: users.length
+        lab, name: containerName(lab), sut, uasPath, csvPath, localIp, count: users.length
     });
     return {
         users, uasPath, csvPath, csv, argv, cwd: sipp.SCRIPTS_DIR,
@@ -30,6 +35,7 @@ function prepareAnswerers(lab, { apikey, sut, localIp, mediaIp, uasTemplate }) {
 class Answerers {
     constructor({ lab, apikey, net, dryRun, events, spawnFn = spawn, spawnSyncFn = spawnSync, backoffMs = [5000, 15000, 60000] }) {
         this.lab = lab;
+        this.container = containerName(lab);
         this.apikey = apikey;
         this.net = net;
         this.dryRun = dryRun;
@@ -55,7 +61,7 @@ class Answerers {
             console.log(`  csv:     ${redact(p.csv).replace(/\r\n/g, ' | ')}`);
             return p;
         }
-        fs.mkdirSync(sipp.WORK_DIR, { recursive: true });
+        fs.mkdirSync(sipp.workDir(this.lab), { recursive: true });
         fs.writeFileSync(p.uasPath, p.uasXml);
         fs.writeFileSync(p.csvPath, p.csv, { mode: 0o600 });
         this.prepared = p;
@@ -65,7 +71,7 @@ class Answerers {
 
     launch(ev) {
         // A previous container (crashed daemon) would hold the name and the ports.
-        this.spawnSyncFn('docker', ['rm', '-f', CONTAINER], { stdio: 'ignore' });
+        this.spawnSyncFn('docker', ['rm', '-f', this.container], { stdio: 'ignore' });
         const [file, ...args] = this.prepared.argv;
         const startedAt = Date.now();
         this.events.log({ ...ev, action: 'answerers-start' });
@@ -91,18 +97,18 @@ class Answerers {
         this.stopping = true;
         if (this.timer) clearTimeout(this.timer);
         if (this.child || this.prepared) {
-            this.spawnSyncFn('docker', ['kill', CONTAINER], { stdio: 'ignore' });
-            this.spawnSyncFn('docker', ['rm', '-f', CONTAINER], { stdio: 'ignore' });
+            this.spawnSyncFn('docker', ['kill', this.container], { stdio: 'ignore' });
+            this.spawnSyncFn('docker', ['rm', '-f', this.container], { stdio: 'ignore' });
         }
         if (this.child) {
             try { this.child.kill('SIGTERM'); } catch (e) { /* already gone */ }
         }
         this.child = null;
         for (const f of ['answerers-uas.xml', 'answerers.csv']) {
-            try { fs.unlinkSync(path.join(sipp.WORK_DIR, f)); } catch (e) { /* none */ }
+            try { fs.unlinkSync(path.join(sipp.workDir(this.lab), f)); } catch (e) { /* none */ }
         }
         if (this.events) this.events.log({ stream: 'answerers', action: 'answerers-stopped' });
     }
 }
 
-module.exports = { Answerers, prepareAnswerers, CONTAINER };
+module.exports = { Answerers, prepareAnswerers, CONTAINER, containerName };

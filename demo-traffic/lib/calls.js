@@ -15,8 +15,8 @@ const sipp = require('./sipp');
 function prepareCall(plan, env) {
     const { lab, apikey, sut, localIp, mediaIp, slot, id, dialTemplate } = env;
     const name = `demo-traffic-call-${id}`;
-    const scenarioPath = path.join(sipp.WORK_DIR, `call-${id}.xml`);
-    const csvPath = path.join(sipp.WORK_DIR, `call-${id}.csv`);
+    const scenarioPath = path.join(sipp.workDir(lab), `call-${id}.xml`);
+    const csvPath = path.join(sipp.workDir(lab), `call-${id}.csv`);
     const scenarioXml = sipp.renderDialScenario(dialTemplate, { audio: plan.audio, talkMs: plan.talkMs, mediaIp });
     const csv = sipp.callerCsv(plan.caller, apikey);
     const argv = sipp.buildCallArgv({
@@ -80,7 +80,7 @@ class CallRunner {
                 console.log(`  csv:     ${redact(p.csv).replace(/\r\n/g, ' | ')}`);
                 return { ok: true, dry: true };
             }
-            fs.mkdirSync(sipp.WORK_DIR, { recursive: true });
+            fs.mkdirSync(sipp.workDir(this.lab), { recursive: true });
             fs.writeFileSync(p.scenarioPath, p.scenarioXml);
             fs.writeFileSync(p.csvPath, p.csv, { mode: 0o600 });
             busyKeys.forEach(k => this.busy.add(k));
@@ -113,7 +113,7 @@ class CallRunner {
 
     cleanup(id) {
         for (const f of [`call-${id}.xml`, `call-${id}.csv`]) {
-            try { fs.unlinkSync(path.join(sipp.WORK_DIR, f)); } catch (e) { /* already gone */ }
+            try { fs.unlinkSync(path.join(sipp.workDir(this.lab), f)); } catch (e) { /* already gone */ }
         }
     }
 

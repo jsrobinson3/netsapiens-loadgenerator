@@ -33,7 +33,7 @@ so before sending, the daemon GETs `domains/{d}/users/{sender}/messagesessions` 
 the session whose `messagesession-remote` matches the destination (numbers are normalised:
 non-digits stripped, leading `1` dropped from 11-digit NANP numbers, so `9803510486` ==
 `19803510486`). A sid is minted only if none exists and is cached in
-`state/demo-traffic/sessions.json` keyed by sender + normalised remote. One lookup per
+`state/demo-traffic/sessions.json` (per lab: see below) keyed by sender + normalised remote. One lookup per
 conversation per run. `--dry-run` skips the lookup and uses the cached or minted sid.
 
 ## Chat transport (`chatTransport` in lab.json)
@@ -56,7 +56,7 @@ Per message, as the sender (ext only, never 4010 or any protected/onecloud-sbz u
 3. 1:1: reuse the last room for the peer in the sender's `m.direct`, else `createRoom`
    (`trusted_private_chat`, `is_direct`) and append it to `m.direct` (other entries kept).
 4. group: a named private room (`lab.groupNames`) created once by the first sender with the
-   rest invited, id saved per group in `state/demo-traffic/matrix-rooms.json` and reused.
+   rest invited, id saved per group in `state/demo-traffic/matrix-rooms.json` (per lab: see below) and reused.
 5. demo colleagues (4011-4014) run no client, so when one is invited the generator JOINs as
    that colleague with their own token (and, for 1:1, adds the room to their `m.direct` so
    replies reuse it). The demo user 4010 is only ever invited, never acted as.
@@ -102,8 +102,8 @@ node demo-traffic/run.js --server v46
 nohup node demo-traffic/run.js --server v46 >> state/demo-traffic/daemon.log 2>&1 &
 ```
 
-Options: `--server <name>`, `--dry-run`, `--once <stream>`, `--time-scale N` (compress
-inter-arrival gaps and burst delays N-fold for testing), `--ignore-hours`.
+Options: `--server <name>`, `--lab <path>`, `--dry-run`, `--once <stream>`, `--time-scale N` (compress
+inter-arrival gaps and burst delays N-fold for testing), `--ignore-hours`. `build.js` takes `--lab` too.
 
 A cron `@reboot` entry or a systemd user service running the daemon command works; the
 daemon is self-contained and logs one line per event to stdout and a redacted JSONL copy to
@@ -114,6 +114,33 @@ devices registered and auto-answering (never 4010). It is restarted if it exits 
 registration scenario ends about every 58 minutes). Call streams use templated copies of
 `sipp/scripts/sipp_uac_agent_dial.xml` under `state/demo-traffic/work/`; existing scenarios
 are never modified and temp files are removed after each call.
+
+## Several environments side by side (`--lab`)
+
+`--lab <path>` picks the lab file (default `demo-traffic/lab.json`; relative paths resolve from
+the repo root). One daemon per lab file:
+
+```bash
+node demo-traffic/run.js --server v46                                   # lab.json, as before
+V46LAB_NS_API_KEY=... node demo-traffic/run.js --server v46lab --lab demo-traffic/lab.v46lab.json
+```
+
+- **State is per lab.** The lab's `id` (optional; default: the file's basename without `.json`)
+  names `state/demo-traffic/<id>/` (sessions.json, matrix-rooms.json, events.jsonl, devices.csv,
+  work/, and the daemon log if you redirect there). The one exception: the default `lab.json`
+  with no `id` keeps the original un-namespaced `state/demo-traffic/`, so a running v46 daemon's
+  state is not orphaned.
+- **SIPp runs on the host network**, so two daemons need different ports. A lab sets
+  `sipp.portOffset` (integer 0-300, default 0): SIP and control ports shift by it, media ports by
+  10x it. Give the first lab 0 and the next 300. The answerers container is named
+  `demo-traffic-answerers-<id>` (the default lab keeps `demo-traffic-answerers`), so one daemon
+  never removes the other's container.
+- **Credentials.** In `servers.json` a server may use `"apikeyEnv": "V46LAB_NS_API_KEY"` instead
+  of an inline `apikey`; it is read from the environment when the server is selected, with a clear
+  error if it is unset or empty. See `servers.json.example`.
+- `lab.v46lab.example.json` is a template (all streams disabled, `TODO-...` placeholders for
+  what an inventory must supply). `run.js` and `build.js` refuse to start while any `TODO`
+  value remains.
 
 ## SMS and shared-inbox caveat
 
